@@ -165,7 +165,8 @@ errors_e remove_first_incident(incident_node **p_head, incident_s** p_incident)
 
 void free_responders(responder_s** responders, int num_responders)
 {
-    //need to implement
+
+  printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[0]->id,responders[0]->name,responders[0]->role);
 }
 
 /* function load_responders
@@ -178,70 +179,59 @@ errors_e load_responders(responder_s **responders, int* p_num_responders){
   char name[256];
   roles_types_e role;
 
-
-  responder_s * temp;
-  temp = (responder_s*)malloc(sizeof(responder_s) * MAX_NUM_RESPONDERS);
-  if(temp == NULL)
-    return out_of_memory;
-
   FILE * file_input = fopen("responders.txt", "r");
-  char buffer[255];
-
   if(file_input == NULL)
   {
     return error_in_responder_reading;
   }
-  else{
+  char buffer[255];
+  int j = 0;
+  
     while(fgets(buffer,255,file_input)!= NULL){
-    int i = 0 , j =0;
     if (buffer[0] == '\n'||buffer[0] == '\r') {
             continue;
         }
 
-      //printf("%s",buffer); //tester
-
       token = strtok(buffer, s);
+      int i = 0;
 
       while(token != NULL ) {
       if(i == 0){
         id = atoi(token+3);
-        // printf("%d : str1\n",id);
+        // printf("%d : id\n",id);
       }
-      if(i == 1){
+      else if(i == 1){
         strcpy(name,token+5);
-        // printf("%s : str2\n",name);
+        // printf("%s : name\n",name);
       }
-      if(i == 2){
+      else if(i == 2){
         role = atoi(token+5);
-        // printf("%d : str3\n",role);
+        // printf("%d : role\n",role);
       }
         
         token = strtok(NULL, s);
         i++;
       }
-        temp[j].id = id;
-        temp[j].name = malloc(256);
-        strcpy(temp[j].name,name);
-        temp[j].role = role;
-        printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",temp[j].id,temp[j].name,temp[j].role);
+      
+      if(role < count_roles  && role >= 0){
+        responders[j] = (responder_s*)malloc(sizeof(responder_s) * MAX_NUM_RESPONDERS);
+        if(responders[j] == NULL){
+          fclose(file_input); 
+          out_of_memory;
+        }
+        responders[j]->name = (char*)malloc(256);
+        if(responders[j]->name == NULL)
+          continue;
+        responders[j]->id = id;
+        strcpy(responders[j]->name,name);
+        responders[j]->role = role;
+        //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[j]->id,responders[j]->name,responders[j]->role);
         j++;
+        (*p_num_responders)++; /*count++*/
+      }
   }
-
-  (*p_num_responders)++; /*count++*/
-  //printf("%s %s %s test\n",str1,str2,str3);
-  /*    
-    int id;
-    char* name;
-    int num_handled_incidents;
-    int sum_handled_priorities;
-    int incident_types[count_incident_types] ;
-    roles_types_e role;
-  */
-
-
   fclose(file_input);
-  //  return no_error;
-  }
+  return no_error;
 }
 
 
@@ -364,7 +354,8 @@ int main()
         exit(1);
     }
     printf("number of total responders is %d\n", num_responders);
-   
+
+
     
     error_code = add_incident(&head, 303, zombie_attack, 5, "the walkig dead");
     if (error_code!= no_error)
@@ -396,6 +387,7 @@ int main()
     {
       printf("error code is %d\n", error_code);
     }
+    printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[1]->id,responders[1]->name,responders[1]->role);
     
    error_code = handle_next_incident(&head, responders, num_responders);
     if (error_code!= no_error)
@@ -431,6 +423,7 @@ int main()
    report_busiest_responder(responders, num_responders, &stat);
    print_statistics_report(&stat);
    
+   printf("test\n");
    free_responders(responders, num_responders);
    free_incidents_list(head);
    head = NULL;
