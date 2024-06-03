@@ -116,8 +116,22 @@ typedef struct responder_statistics_s
 
 incident_s* create_incident(int id, incident_type_e type, int priority,  char* description)
 {
- // need to implement
- return NULL;
+  incident_s * incident = (incident_s*)malloc(sizeof(incident_s));
+  if(incident == NULL){
+    return NULL;
+  }
+  //id_incident_duplicate if id is allready in 
+  incident->id = id;
+  incident->type = type;
+  incident->priority = priority;
+  incident->description = (char*)malloc(sizeof(char) * (strlen(description) + 1));
+  if(incident->description == NULL){
+    free(incident);
+    return NULL;
+  }
+  strcpy(incident->description,description);
+
+  return incident;
 }
 
 
@@ -147,8 +161,40 @@ void print_incidents_details(incident_node* head)
   */
 errors_e add_incident(incident_node **p_head, int id, incident_type_e type, int priority, char* description)
 { 
-    
-//need to implement
+    incident_node * curr , *prev = NULL;
+    incident_node * node = (incident_node *)malloc(sizeof(incident_node));
+    if(node == NULL)
+    {
+      return out_of_memory;
+    }
+    node->next = NULL;
+    node->incident = create_incident(id,type,priority,description);
+    if(node->incident == NULL)
+    {
+      free(node);
+      return out_of_memory;
+    }
+
+    if (*p_head == NULL)
+    {
+      *p_head = node;
+    }
+
+    curr = *p_head;
+    while (curr != NULL)
+    {
+      if (curr->incident->id == id) 
+        {
+        free(node->incident->description);
+        free(node->incident);
+        free(node);
+        return duplicate_incident_id;
+        }
+      prev = curr;
+      curr = curr->next;
+    }
+    prev->next = node;
+
 return no_error;
 }
 
@@ -165,8 +211,21 @@ errors_e remove_first_incident(incident_node **p_head, incident_s** p_incident)
 
 void free_responders(responder_s** responders, int num_responders)
 {
+  //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[0]->id,responders[0]->name,responders[0]->role);
+   for (int j = 0; j < num_responders; j++) {
+        if (responders[j] != NULL) {
+            if (responders[j]->name != NULL) {
+                free(responders[j]->name);
+                responders[j]->name = NULL;  
+            }
+            free(responders[j]);
+            responders[j] = NULL;
+        }
+    }
+  //for testing 
+  for(int j = 0 ; j < num_responders; j++)
+  printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[j]->id,responders[j]->name,responders[j]->role);
 
-  printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[0]->id,responders[0]->name,responders[0]->role);
 }
 
 /* function load_responders
@@ -176,7 +235,7 @@ errors_e load_responders(responder_s **responders, int* p_num_responders){
   const char s[2] = " ";
   char *token;
   int id;
-  char name[256];
+  char *name;
   roles_types_e role;
 
   FILE * file_input = fopen("responders.txt", "r");
@@ -219,7 +278,7 @@ errors_e load_responders(responder_s **responders, int* p_num_responders){
           fclose(file_input); 
           out_of_memory;
         }
-        responders[j]->name = (char*)malloc(256);
+        responders[j]->name = (char*)malloc(sizeof(char) * (strlen(name) + 1));
         if(responders[j]->name == NULL)
           continue;
         responders[j]->id = id;
@@ -355,7 +414,6 @@ int main()
     }
     printf("number of total responders is %d\n", num_responders);
 
-
     
     error_code = add_incident(&head, 303, zombie_attack, 5, "the walkig dead");
     if (error_code!= no_error)
@@ -387,7 +445,7 @@ int main()
     {
       printf("error code is %d\n", error_code);
     }
-    printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[1]->id,responders[1]->name,responders[1]->role);
+    //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[1]->id,responders[1]->name,responders[1]->role);
     
    error_code = handle_next_incident(&head, responders, num_responders);
     if (error_code!= no_error)
