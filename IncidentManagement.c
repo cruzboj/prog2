@@ -137,7 +137,18 @@ incident_s* create_incident(int id, incident_type_e type, int priority,  char* d
 
 void destroy_incident(incident_s* incident)
 {
-   //need to implement
+     if (incident == NULL)
+    {
+        return;
+    }
+
+    if (incident->description != NULL)
+    {
+        free(incident->description);
+        incident->description = NULL;
+    }
+
+    free(incident);
 }
 
 
@@ -148,6 +159,12 @@ void print_incidents_details(incident_node* head)
     //need to implement, use the following line for print
     //incident_node *curr;
     //printf(" incident %d %s %s\n", curr->incident->id, incident_types[curr->incident->type], curr->incident->description);
+    incident_node *curr = head;
+    while (curr != NULL)
+    {
+        printf("incident %d %s %s\n", curr->incident->id, incident_types[curr->incident->type], curr->incident->description);
+        curr = curr->next;
+    }
 }
 
 
@@ -161,41 +178,45 @@ void print_incidents_details(incident_node* head)
   */
 errors_e add_incident(incident_node **p_head, int id, incident_type_e type, int priority, char* description)
 { 
-    incident_node * curr , *prev = NULL;
-    incident_node * node = (incident_node *)malloc(sizeof(incident_node));
+    incident_node *curr = *p_head;
+    incident_node *node = (incident_node *)malloc(sizeof(incident_node));
     if(node == NULL)
     {
-      return out_of_memory;
+        return out_of_memory;
     }
     node->next = NULL;
-    node->incident = create_incident(id,type,priority,description);
+    node->incident = create_incident(id, type, priority, description);
     if(node->incident == NULL)
     {
-      free(node);
-      return out_of_memory;
+        free(node);
+        return out_of_memory;
     }
 
+    // Check if list is empty
     if (*p_head == NULL)
     {
-      *p_head = node;
+        *p_head = node;
+        return no_error;
     }
 
     curr = *p_head;
     while (curr != NULL)
     {
-      if (curr->incident->id == id) 
+        if (curr->incident->id == id) 
         {
-        free(node->incident->description);
-        free(node->incident);
-        free(node);
-        return duplicate_incident_id;
+            free(node->incident->description);
+            free(node->incident);
+            free(node);
+            return duplicate_incident_id;
         }
-      prev = curr;
-      curr = curr->next;
+        if (curr->next == NULL) {
+            curr->next = node;
+            return no_error;
+        }
+        curr = curr->next;
     }
-    prev->next = node;
 
-return no_error;
+    return no_error; // Return no error by default, although we should never reach this point
 }
 
 /* function remove_first_incident 
@@ -204,15 +225,30 @@ p_incident pointer to pointer to incident, here the function will store the remo
 the memory of the node should be released */
 errors_e remove_first_incident(incident_node **p_head, incident_s** p_incident)
 {
-  //need to impleement
-  return no_error;
+    // Check if list is empty
+    if (*p_head == NULL)
+    {
+        return no_incidents_to_handle;
+    }
+
+    // Save the current head and its incident
+    incident_node *node_to_remove = *p_head;
+    *p_incident = node_to_remove->incident;
+
+    // Update the head to the next node
+    *p_head = (*p_head)->next;
+
+    // Free the node (not the incident, since it is being returned)
+    free(node_to_remove);
+
+    return no_error;
 }
 
 
 void free_responders(responder_s** responders, int num_responders)
 {
   //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[0]->id,responders[0]->name,responders[0]->role);
-   for (int j = 0; j < num_responders; j++) {
+    for (int j = 0; j < num_responders; j++) {
         if (responders[j] != NULL) {
             if (responders[j]->name != NULL) {
                 free(responders[j]->name);
@@ -222,82 +258,106 @@ void free_responders(responder_s** responders, int num_responders)
             responders[j] = NULL;
         }
     }
+    // Remove this loop or move it before freeing the memory
+    /*
+    for(int j = 0 ; j < num_responders; j++)
+        printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[j]->id,responders[j]->name,responders[j]->role);
+    */
   //for testing 
-  for(int j = 0 ; j < num_responders; j++)
-  printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[j]->id,responders[j]->name,responders[j]->role);
-
+  //for(int j = 0 ; j < num_responders; j++)
+  //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[j]->id,responders[j]->name,responders[j]->role);
 }
 
 /* function load_responders
 responders - here responders will be stored
 p_num_responders- a pointer to integer where the actual number of valid responders is stored*/
 errors_e load_responders(responder_s **responders, int* p_num_responders){
-  const char s[2] = " ";
-  char *token;
-  int id;
-  char *name;
-  roles_types_e role;
+    const char s[2] = " ";
+    char *token;
+    int id;
+    char name[255];  // Use a buffer for name
+    roles_types_e role;
 
-  FILE * file_input = fopen("responders.txt", "r");
-  if(file_input == NULL)
-  {
-    return error_in_responder_reading;
-  }
-  char buffer[255];
-  int j = 0;
-  
-    while(fgets(buffer,255,file_input)!= NULL){
-    if (buffer[0] == '\n'||buffer[0] == '\r') {
+    FILE *file_input = fopen("responders.txt", "r");
+    if(file_input == NULL) {
+        return error_in_responder_reading;
+    }
+    char buffer[255];
+    int j = 0;
+
+    while(fgets(buffer, 255, file_input) != NULL) {
+        if (buffer[0] == '\n' || buffer[0] == '\r') {
             continue;
         }
 
-      token = strtok(buffer, s);
-      int i = 0;
+        //printf("%d\n", *p_num_responders);
+        token = strtok(buffer, s);
+        int i = 0;
 
-      while(token != NULL ) {
-      if(i == 0){
-        id = atoi(token+3);
-        // printf("%d : id\n",id);
-      }
-      else if(i == 1){
-        strcpy(name,token+5);
-        // printf("%s : name\n",name);
-      }
-      else if(i == 2){
-        role = atoi(token+5);
-        // printf("%d : role\n",role);
-      }
-        
-        token = strtok(NULL, s);
-        i++;
-      }
-      
-      if(role < count_roles  && role >= 0){
-        responders[j] = (responder_s*)malloc(sizeof(responder_s) * MAX_NUM_RESPONDERS);
-        if(responders[j] == NULL){
-          fclose(file_input); 
-          out_of_memory;
+        while(token != NULL) {
+            if(i == 0){
+                id = atoi(token+3);
+                //printf("%d : id\n", id);
+            } else if(i == 1){
+                strcpy(name, token+5);
+                //printf("%s : name\n", name);
+            } else if(i == 2){
+                role = atoi(token+5);
+                //printf("%d : role\n", role);
+            }
+            token = strtok(NULL, s);
+            i++;
         }
-        responders[j]->name = (char*)malloc(sizeof(char) * (strlen(name) + 1));
-        if(responders[j]->name == NULL)
-          continue;
-        responders[j]->id = id;
-        strcpy(responders[j]->name,name);
-        responders[j]->role = role;
-        //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[j]->id,responders[j]->name,responders[j]->role);
-        j++;
-        (*p_num_responders)++; /*count++*/
-      }
-  }
-  fclose(file_input);
-  return no_error;
+
+        if(role < count_roles  && role >= 0){
+            responders[j] = (responder_s*)malloc(sizeof(responder_s));
+            if(responders[j] == NULL){
+                fclose(file_input); 
+                return out_of_memory;
+            }
+            responders[j]->name = (char*)malloc(sizeof(char) * (strlen(name) + 1));
+            if(responders[j]->name == NULL){
+                free(responders[j]);
+                continue;
+            }
+            responders[j]->id = id;
+            strcpy(responders[j]->name, name);
+            responders[j]->role = role;
+            j++;
+            (*p_num_responders)++; /*count++*/
+        }
+    }
+    fclose(file_input);
+    return no_error;
 }
 
 
-errors_e assign_responder_to_incident(incident_type_e type, responder_s** responders, int num_responders, int* ind_chosen_responder)
+errors_e assign_responder_to_incident
+(incident_type_e type, responder_s** responders, int num_responders, int* ind_chosen_responder)
 {
-  //need to implement
-  return no_error;
+    int min_incidents = -1;
+    int chosen_index = -1;
+
+    for (int i = 0; i < num_responders; i++)
+    {
+        // Check if responder's role can handle the incident type
+        if (relation[type][responders[i]->role] == 1)
+        {
+            if (min_incidents == -1 || responders[i]->num_handled_incidents < min_incidents)
+            {
+                min_incidents = responders[i]->num_handled_incidents;
+                chosen_index = i;
+            }
+        }
+    }
+
+    if (chosen_index == -1)
+    {
+        return no_responder_for_incident;
+    }
+
+    *ind_chosen_responder = chosen_index;
+    return no_error;
 }
 
 //implemented for you, no need to implement
@@ -318,8 +378,37 @@ p_incident pointer to pointer to incident, here the function will store the remo
 the memory of the node should be released inside this function */
 errors_e remove_incident_by_id(incident_node **p_head, int id, incident_s** p_incident)
 {
-   //need to implement
-   return no_error;
+    if (*p_head == NULL)
+    {
+        return no_incidents_to_handle;
+    }
+
+    incident_node *current = *p_head;
+    incident_node *previous = NULL;
+
+    while (current != NULL)
+    {
+        if (current->incident->id == id)
+        {
+            if (previous == NULL) // The incident to remove is the first node
+            {
+                *p_head = current->next;
+            }
+            else
+            {
+                previous->next = current->next;
+            }
+
+            *p_incident = current->incident;
+            free(current);
+            return no_error;
+        }
+
+        previous = current;
+        current = current->next;
+    }
+
+    return incident_was_not_found;
 }
 errors_e handle_specific_incident(incident_node **p_head, responder_s ** responders, int num_responders, int id )
 {
@@ -373,8 +462,12 @@ errors_e handle_next_incident(incident_node **p_head, responder_s ** responders,
 
 
 void report_busiest_responder(responder_s** responders, int num_responders, responder_statistics_s* stat)
-{
-   //need to implement
+   {
+    if (num_responders == 0 || responders == NULL || stat == NULL)
+    {
+        // עבורת פרמטרים לא תקינים
+        return;
+    }
 }
 
 
@@ -445,14 +538,16 @@ int main()
     {
       printf("error code is %d\n", error_code);
     }
-    //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[1]->id,responders[1]->name,responders[1]->role);
     
+    //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[1]->id,responders[1]->name,responders[1]->role);
+
    error_code = handle_next_incident(&head, responders, num_responders);
     if (error_code!= no_error)
     {
       printf("error code is %d\n", error_code);
     }
-
+    //printf("temp[j].id = %d\ntemp[j].name = %s\ntemp[j].role = %d\n",responders[2]->id,responders[2]->name,responders[2]->role);
+    
     error_code = handle_specific_incident(&head, responders, num_responders, 303);
     if (error_code!= no_error)
     {
